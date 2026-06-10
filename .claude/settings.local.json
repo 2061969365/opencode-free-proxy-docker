@@ -1,0 +1,7 @@
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:4096/v1",
+    "ANTHROPIC_API_KEY": "not-needed",
+    "ANTHROPIC_MODEL": "claude-sonnet-4-6"
+  }
+}
