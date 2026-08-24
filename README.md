@@ -3,10 +3,14 @@
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-blue.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![API Provider](https://img.shields.io/badge/API-OpenCode%20Free-orange.svg)](https://opencode.ai)
+[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](./DOCKER.md)
+[![Docker Image](https://img.shields.io/badge/image-node%3A20--alpine-2496ED.svg)](./Dockerfile)
 
 **OpenCode Free Proxy** là một máy chủ trung gian (Proxy Server) độc lập, gọn nhẹ viết bằng Node.js. Dự án giúp kết nối các công cụ như **Claude Code**, OpenCode CLI, hoặc các API Client tương thích OpenAI/Claude tới dịch vụ API miễn phí của **OpenCode** (`https://opencode.ai/zen/v1`) mà không cần thiết lập phức tạp hay cần khóa API cá nhân (sử dụng Token công cộng `Bearer public`).
 
 Dự án đi kèm một giao diện điều khiển tích hợp (**Web Dashboard**) hiện đại, trực quan, hỗ trợ song ngữ Anh-Việt giúp bạn dễ dàng quản lý, cấu hình ánh xạ model (Model Mapping), xem lịch sử cuộc gọi và trò chuyện trực tiếp (Playground).
+
+> **🐳 Docker 版本已就绪！** 本仓库已支持一键 Docker 部署（零侵入，不修改源码），详见 [`DOCKER.md`](./DOCKER.md) | `docker compose up -d` 即可启动。
 
 ---
 
@@ -36,13 +40,27 @@ Dự án đi kèm một giao diện điều khiển tích hợp (**Web Dashboard
 
 ## 🚀 Hướng Dẫn Cài Đặt & Khởi Chạy
 
-### 1. Cài đặt các gói phụ thuộc
+### 方式 A: Docker 一键启动（推荐）
+
+```bash
+# 宿主机需开启代理（默认 127.0.0.1:10809），容器内通过 host.docker.internal 穿透
+docker compose up -d --build
+docker logs -f opencode-free-proxy
+curl http://127.0.0.1:4096/api/status
+# Web 面板 http://127.0.0.1:4096
+```
+
+代理端口不同请改 `docker-compose.yml` 中 `HTTP_PROXY/HTTPS_PROXY`，无需代理则删除 `environment` 两行。详见 [`DOCKER.md`](./DOCKER.md)。
+
+### 方式 B: 本地 Node.js 运行
+
+#### 1. Cài đặt các gói phụ thuộc
 Mở terminal tại thư mục dự án và chạy lệnh:
 ```bash
 npm install
 ```
 
-### 2. Khởi chạy máy chủ proxy
+#### 2. Khởi chạy máy chủ proxy
 - **Chế độ phát triển (Development mode - tự động tải lại khi code thay đổi):**
   ```bash
   npm run dev
@@ -152,7 +170,12 @@ Dưới đây là các model miễn phí nổi bật trên hệ thống OpenCode
 │   ├── mapper.js            # Xử lý logic ánh xạ tên model
 │   ├── modelMeta.js         # Lưu điểm số & metadata các model
 │   ├── proxy.js             # Xử lý định tuyến & kết nối API ngược
+│   ├── notify.js            # 通知模块
 │   └── translator.js        # Dịch chuyển cấu trúc request/response OpenAI <-> Anthropic
+├── Dockerfile               # Docker 构建文件 (node:20-alpine)
+├── docker-compose.yml       # Docker Compose 编排（含健康检查）
+├── docker-entrypoint.sh     # 容器入口（自动兼容 Windows notify 路径）
+├── DOCKER.md                # Docker 使用说明
 ├── package.json             # Danh sách gói phụ thuộc và scripts chạy dự án
 ├── proxy-claude.cmd         # File chạy Claude Code nhanh trên Windows
 ├── server.js                # Điểm khởi chạy ứng dụng Express server
