@@ -1,0 +1,32 @@
+services:
+  opencode-free-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: opencode-free-proxy:latest
+    container_name: opencode-free-proxy
+    ports:
+      - "4096:4096"
+    volumes:
+      # 持久化映射与设置，改动无需重建镜像
+      - ./config:/app/config
+      # 推理缓存持久化，避免容器重启丢失
+      - ./reasoning-cache.json:/app/reasoning-cache.json
+      # 调试文件可选持久化
+      - ./debug-400.json:/app/debug-400.json
+    environment:
+      # 容器内通过宿主机代理访问 opencode.ai
+      # 若宿主机无代理，可删除这两行或留空
+      - HTTP_PROXY=http://host.docker.internal:10809
+      - HTTPS_PROXY=http://host.docker.internal:10809
+      # Node 额外参数已在 Dockerfile CMD 中通过 --use-env-proxy 生效
+      - NO_PROXY=localhost,127.0.0.1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4096/api/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

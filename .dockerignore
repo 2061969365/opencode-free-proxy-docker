@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+proxy.out.log
+proxy.err.log
+*.log
+.vscode
+.idea
+start.bat
+stop.bat
+proxy-claude.cmd
+reasoning-cache.json
+debug-400.json

@@ -22,6 +22,14 @@ const DEFAULTS = {
   "claude-haiku-3-5-20241022": "nemotron-3-ultra-free",
   "claude-3-5-sonnet-20241022": "north-mini-code-free",
   "claude-3-5-haiku-20241022": "nemotron-3-ultra-free",
+  "claude-opus-4-5": "mimo-v2.5-free",
+  "claude-opus-4-5-20251101": "mimo-v2.5-free",
+  "claude-sonnet-4-5": "deepseek-v4-flash-free",
+  "claude-sonnet-4-5-20250929": "deepseek-v4-flash-free",
+  "claude-haiku-4-5-20251001": "nemotron-3-ultra-free",
+  "claude-3-7-sonnet-20250219": "north-mini-code-free",
+  "claude-3-7-sonnet-latest": "north-mini-code-free",
+  "claude-opus-4-1-20250805": "mimo-v2.5-free",
 };
 
 function load() {

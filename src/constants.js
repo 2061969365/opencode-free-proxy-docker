@@ -9,8 +9,7 @@ const API = {
 
 const DEFAULT_HEADERS = {
   "Content-Type": "application/json",
-  Authorization: "Bearer public",
-  "x-opencode-client": "desktop",
+  "User-Agent": "opencode/1.18.18",
   Accept: "text/event-stream",
 };
 
