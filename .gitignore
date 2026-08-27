@@ -1,1 +1,8 @@
 /node_modules
+reasoning-cache.json
+reasoning-cache.json.tmp.*
+debug-400.json
+debug-400-prev.json
+proxy*.log
+proxy-*.log
+test/tmp/
