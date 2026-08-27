@@ -48,6 +48,14 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
+// Dashboard under /api/ui so it is reachable via Cloudflare Tunnel rule (/api -> 4096)
+// Assets are referenced relatively (tokens.css/app.js), fetches use /api/* /v1/* which route to this server.
+// Redirect bare /api/ui -> /api/ui/ so relative asset URLs resolve correctly.
+app.use("/api/ui", (req, res, next) => {
+  if (req.path === "") return res.redirect(301, "/api/ui/");
+  next();
+}, express.static(path.join(__dirname, "public")));
+
 const router = express.Router();
 
 router.get("/models", async (req, res) => {
@@ -181,6 +189,15 @@ api.post("/notify/test", async (req, res) => {
 
 api.get("/model-meta", (req, res) => res.json(MODEL_META));
 api.get("/model-scores", (req, res) => res.json(getFreeModelScores()));
+api.get("/debug-400", (req, res) => {
+  try {
+    const p = path.join(__dirname, "debug-400.json");
+    const data = JSON.parse(fs.readFileSync(p, "utf-8"));
+    res.json(data);
+  } catch (e) {
+    res.status(404).json({ error: "no debug data", message: e.message });
+  }
+});
 
 app.use("/api", api);
 
