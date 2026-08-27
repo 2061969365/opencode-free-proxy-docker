@@ -208,3 +208,19 @@ server.on("error", (e) => {
   }
   throw e;
 });
+
+function shutdownAndExit(code = 1) {
+  console.error(`[FATAL] unhandled error, shutting down gracefully`);
+  try { server.close(() => process.exit(code)); } catch { process.exit(code); }
+  setTimeout(() => process.exit(code), 5000).unref();
+}
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException]", err);
+  shutdownAndExit(1);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection]", reason);
+  shutdownAndExit(1);
+});
+process.on("SIGINT", () => { server.close(() => process.exit(0)); });
+process.on("SIGTERM", () => { server.close(() => process.exit(0)); });

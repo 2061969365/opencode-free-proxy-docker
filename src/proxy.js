@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 import { LRUCache } from "lru-cache";
 import { anthropicToOpenAI, openaiToAnthropic, createAnthropicSSETransformer } from "./translator.js";
 import { notifyError } from "./notify.js";
+import { isBreakerOpen, openBreaker, getBreakerTTL } from "./cache.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -344,7 +345,17 @@ async function handleProxy(req, res, format) {
         continue;
       }
       clearTimeout(firstByteTimer);
-      if (res.ok || !RETRYABLE.includes(res.status) || attempt >= 4) return res;
+      if (res.ok || !RETRYABLE.includes(res.status) || attempt >= 4) {
+        if (res && res.status === 429) {
+          const ra = parseInt(res.headers.get("retry-after") || "0", 10);
+          openBreaker("upstream:429", ra ? ra * 1000 : 60 * 1000);
+        }
+        return res;
+      }
+      if (res.status === 429) {
+        const ra = parseInt(res.headers.get("retry-after") || "0", 10);
+        openBreaker("upstream:429", ra ? ra * 1000 : 60 * 1000);
+      }
       try { await res.body?.cancel?.(); } catch {}
       let delay;
       if (res.status === 429) {
@@ -357,6 +368,23 @@ async function handleProxy(req, res, format) {
       await sleep(delay);
     }
   };
+
+  if (isBreakerOpen("upstream:429")) {
+    const ttl = getBreakerTTL("upstream:429");
+    const msg = `Upstream rate limited, breaker open for ${Math.ceil(ttl / 1000)}s`;
+    console.log(`[PROXY] breaker open skip ${originalModel} ttl=${ttl}ms`);
+    add({
+      method: req.method, path: req.path,
+      model: originalModel, mappedTo: body.model,
+      status: 429, duration: Date.now() - start,
+      error: msg,
+    });
+    if (isAlive()) {
+      res.setHeader("Retry-After", String(Math.ceil(ttl / 1000)));
+      res.status(429).json(normalizeError(format, 429, msg));
+    }
+    return;
+  }
 
   try {
     // Direct routing for known responses models (avoid 4x retry delay)
@@ -579,6 +607,8 @@ async function handleProxy(req, res, format) {
           } catch {}
         }
         if (upstreamRes.status === 429) {
+          const ra = parseInt(upstreamRes.headers.get("retry-after") || "0", 10);
+          openBreaker("upstream:429", ra ? ra * 1000 : 60 * 1000);
           notifyError("rate-limit", `[限流] ${originalModel} 上游 429: ${errText.slice(0, 120)}`);
         } else if (upstreamRes.status >= 500) {
           notifyError(`upstream-${upstreamRes.status}`, `[上游 ${upstreamRes.status}] ${originalModel}: ${errText.slice(0, 120)}`);
