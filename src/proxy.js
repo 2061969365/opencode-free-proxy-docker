@@ -2,72 +2,30 @@ import { API, DEFAULT_HEADERS } from "./constants.js";
 import { resolve } from "./mapper.js";
 import { add } from "./logger.js";
 import { Readable } from "stream";
-import { readFileSync, writeFileSync, mkdirSync, writeFile } from "fs";
+import { writeFile } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { LRUCache } from "lru-cache";
 import { anthropicToOpenAI, openaiToAnthropic, createAnthropicSSETransformer } from "./translator.js";
 import { notifyError } from "./notify.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const REASONING_CACHE_FILE = path.join(__dirname, "..", "reasoning-cache.json");
-const REASONING_CACHE_MAX = 2000;
 
-const reasoningCache = new Map();
-let reasoningDirty = false;
-let reasoningSaveTimer = null;
-
-function loadReasoningCache() {
-  try {
-    const raw = readFileSync(REASONING_CACHE_FILE, "utf8");
-    const obj = JSON.parse(raw);
-    if (obj && typeof obj === "object") {
-      for (const [k, v] of Object.entries(obj)) {
-        if (typeof v === "string") reasoningCache.set(k, v);
-      }
-    }
-    console.log(`[PROXY] loaded ${reasoningCache.size} reasoning cache entries`);
-  } catch {
-    console.log("[PROXY] no reasoning cache file, starting fresh");
-  }
-}
-
-function saveReasoningCache() {
-  if (!reasoningDirty) return;
-  reasoningDirty = false;
-  try {
-    const obj = {};
-    for (const [k, v] of reasoningCache) obj[k] = v;
-    writeFileSync(REASONING_CACHE_FILE, JSON.stringify(obj));
-    console.log(`[PROXY] saved ${reasoningCache.size} reasoning cache entries`);
-  } catch (e) {
-    console.log(`[PROXY] failed to save reasoning cache: ${e.message}`);
-  }
-}
-
-function scheduleReasoningSave() {
-  reasoningDirty = true;
-  clearTimeout(reasoningSaveTimer);
-  reasoningSaveTimer = setTimeout(saveReasoningCache, 2000);
-}
+const reasoningCache = new LRUCache({
+  max: 500,
+  maxSize: 4 * 1024 * 1024,
+  sizeCalculation: (v) => (typeof v === "string" ? v.length : 0),
+  ttl: 60 * 60 * 1000,
+});
 
 function cacheReasoning(reasoning, toolIds) {
   if (!reasoning || !Array.isArray(toolIds) || !toolIds.length) return;
+  const truncated = reasoning.length > 2000 ? reasoning.slice(0, 2000) : reasoning;
   for (const id of toolIds) {
     if (!id) continue;
-    reasoningCache.set(id, reasoning);
+    reasoningCache.set(id, truncated);
   }
-  while (reasoningCache.size > REASONING_CACHE_MAX) {
-    const oldest = reasoningCache.keys().next().value;
-    if (oldest === undefined) break;
-    reasoningCache.delete(oldest);
-  }
-  scheduleReasoningSave();
 }
-
-loadReasoningCache();
-process.on("SIGINT", () => { saveReasoningCache(); process.exit(0); });
-process.on("SIGTERM", () => { saveReasoningCache(); process.exit(0); });
-process.on("exit", () => saveReasoningCache());
 
 function dedupeToolCallIds(body) {
   const messages = body?.messages;
