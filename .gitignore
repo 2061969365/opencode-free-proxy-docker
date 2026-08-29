@@ -6,3 +6,8 @@ debug-400-prev.json
 proxy*.log
 proxy-*.log
 test/tmp/
+config/heartbeat.json
+config/heap.csv
+config/exit.log
+config/pid.json
+config/crash.json
